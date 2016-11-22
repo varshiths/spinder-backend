@@ -6,8 +6,8 @@ import math
 from django.contrib.auth import authenticate, logout, login
 from django.contrib.auth.decorators import login_required
 from django.core import serializers
-from django.db.models import F
-from django.shortcuts import HttpResponse
+# from django.db.models import F
+import django.shortcuts
 from django.views.decorators.csrf import csrf_exempt
 
 from rest_api.models import *
@@ -15,7 +15,7 @@ from rest_api.models import *
 
 def details(user):
     det = {'username': user.username, 'first_name': user.first_name, 'last_name': user.last_name,
-           'playing_time': user.play_time, 'enthu_level': user.enthu_level,
+           'playing_time': user.play_time, 'enthu_level': user.enthu_level, 'exp' : user.expertise_level,
            'interests': json.loads(serializers.serialize('json', user.interests.all()))}
     # print(det)
     # det = json.dumps(det, indent=2)
@@ -36,21 +36,21 @@ def Slogin(request):
             userObject = SUser.objects.get(username=username)
             data = details(userObject)
             # print(data)
-            return HttpResponse(json.dumps(data))
+            return django.shortcuts.HttpResponse(json.dumps(data))
         else:
-            return HttpResponse('{"success" : false}')
+            return django.shortcuts.HttpResponse('{"success" : false}')
     else:
-        return HttpResponse('{"success" : false}')
+        return django.shortcuts.HttpResponse('{"success" : false}')
 
 
 @login_required(login_url='/login/')
 def Slogout(request):
     if request.method == 'GET':
         logout(request)
-        return HttpResponse('{"success" : true}')
+        return django.shortcuts.HttpResponse('{"success" : true}')
     else:
         print('Request Error')
-        return HttpResponse('{"success" : false}')
+        return django.shortcuts.HttpResponse('{"success" : false}')
 
 
 @csrf_exempt
@@ -62,21 +62,54 @@ def register(request):
         user.last_name = request.POST['last_name']
         user.set_password(request.POST['password'])
         user.save()
-        return HttpResponse('{"success" : true}')
+        return django.shortcuts.HttpResponse('{"success" : true}')
     else:
         print('Request Error')
-        return HttpResponse('{"success" : false}')
+        return django.shortcuts.HttpResponse('{"success" : false}')
 
 
 @login_required(login_url='/login/')
 def interests(request):
     if request.method == 'GET':
-        user = request.user;
+        user = request.user
         data = serializers.serialize('json', user.interests.all())
-        return HttpResponse(data)
+        return django.shortcuts.HttpResponse(data)
     else:
         print('Request Error')
-        return HttpResponse('{"success" : false}')
+        return django.shortcuts.HttpResponse('{"success" : false}')
+
+
+@csrf_exempt
+@login_required(login_url='/login/')
+def updatepref(request):
+    if request.method == 'POST':
+        user = SUser.objects.get(pk = request.user.pk)
+        for key in request.POST:
+            if key == 'username':
+                user.username = request.POST[key]
+            if key == 'exp':
+                user.expertise_level = request.POST[key]
+            if key == 'first_name':
+                user.first_name = request.POST[key]
+            if key == 'last_name':
+                user.last_name = request.POST[key]
+            if key == 'interests':
+                print(user.interests.all())
+
+                for i in user.interests.all():
+                    user.interests.remove(Sport.objects.get(pk = i.pk))
+
+                print(user.interests.all())
+
+                list = request.POST[key][1:].split(',')
+                for pkcode in list:
+                    user.interests.add(Sport.objects.get(pk = pkcode))
+
+                print(user.interests.all())
+        return django.shortcuts.HttpResponse('{"success" : true }')
+    else:
+        data = serializers.serialize('json', Sport.objects.all())
+        return django.shortcuts.HttpResponse(data)
 
 
 @csrf_exempt
@@ -90,10 +123,10 @@ def synclocation(request):
         print(user.long)
         user.save()
         print("location synced")
-        return HttpResponse('{"success" : true}')
+        return django.shortcuts.HttpResponse('{"success" : true}')
     else:
         print('Request Error')
-        return HttpResponse('{"success" : false}')
+        return django.shortcuts.HttpResponse('{"success" : false}')
 
 
 def pathdistance(lat1, long1, lat2, long2):
@@ -136,7 +169,7 @@ def matchevaluate(user, sport_id):
 
 @login_required(login_url='/login/')
 def getuserdata(request):
-    return HttpResponse(json.dumps(details(SUser.objects.get(username=request.user.username))))
+    return django.shortcuts.HttpResponse(json.dumps(details(SUser.objects.get(username=request.user.username))))
 
 
 @login_required(login_url='/login/')
@@ -144,7 +177,7 @@ def getmatches(request, sport_id):
     if request.method == 'GET':
         user = SUser.objects.get(username=request.user.username)
         matchedusers = matchevaluate(user, sport_id)
-        return HttpResponse(str(matchedusers))
+        return django.shortcuts.HttpResponse(str(matchedusers))
     else:
         print('Request Error')
-        return HttpResponse('{"success" : false}')
+        return django.shortcuts.HttpResponse('{"success" : false}')
